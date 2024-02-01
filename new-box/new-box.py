@@ -99,16 +99,12 @@ def enumerate_http():
             nikto_command = shlex.split(f'nikto --host {ip} -p {port}')
             nikto_scan = subprocess.run(nikto_command, capture_output=True, text=True)
 
-            print(nikto_scan.stdout, nikto_scan.returncode)
-
             # Write to files
-            if gobuster_scan.returncode == 0:
-                gobuster_file = open(f"{folder_path}/enum/gobuster.log", "a")
-                gobuster_file.write(gobuster_scan.stdout)
+            gobuster_file = open(f"{folder_path}/enum/gobuster.log", "a")
+            gobuster_file.write(gobuster_scan.stdout)
 
-            if nikto_scan.returncode == 0:
-                nikto_file = open(f"{folder_path}/enum/nikto.log", "a")
-                nikto_file.write(nikto_scan.stdout)
+            nikto_file = open(f"{folder_path}/enum/nikto.log", "a")
+            nikto_file.write(nikto_scan.stdout)
 
 
 if __name__ == '__main__':
