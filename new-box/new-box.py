@@ -8,11 +8,25 @@ import re
 import shlex
 
 parser = argparse.ArgumentParser(description="Enum script for a new box")
-parser.add_argument("--path")
-parser.add_argument("--name")
-parser.add_argument("-i", "--ip")
-parser.add_argument("--web", action=argparse.BooleanOptionalAction, default=False)
-parser.add_argument("-v", "--verbose", action=argparse.BooleanOptionalAction, default=False)
+parser.add_argument("--author", help="Your name. (Firstname Lastname)")
+parser.add_argument("--path", help="The path to put the folders for the box")
+parser.add_argument("--name", help="The name of the box. (Will also be the name of the folder)")
+parser.add_argument("-i", "--ip", help="The ip adress of the box")
+parser.add_argument("-V", "--verbose", action=argparse.BooleanOptionalAction, default=False, help="Add this if you want the program to write out it's progress to the console")
+
+def announce(type, msg):
+    announcement = ""
+    match type:
+        case "i":
+            if verbose:
+                announcement = f"[i] {msg}"
+        case "e":
+            announcement = f"[!] {msg}"
+        case "a":
+            if verbose:
+                announcement = f"[*] {msg}" 
+    if announcement != "":
+        print(announcement)
 
 def initial_enumeration():
     # Skapa Alla Mappar
@@ -25,31 +39,27 @@ def initial_enumeration():
     
     # Fill out README
     f = open(f"{folder_path}/README.md", "a")
-    f.write(f'# {name}\n\n> Gustav Lundgren | {datetime.now().strftime("%Y-%m-%d")}\n\n## Nmap\n\n')
+    f.write(f'# {name}\n\n> {author} | {datetime.now().strftime("%Y-%m-%d")}\n\n---\n\n```bash\nexport IP={ip}\n```\n\n## Nmap\n\n')
 
 
     # Hittar alla öppna portar
-    if verbose:
-        print("[i] Starting nmap scan...")
+    announce("i", "Starting nmap scan...")
 
-    inital_scan_command = shlex.split(f'nmap -oN {folder_path}/nmap/open_ports {ip}')
+    inital_scan_command = shlex.split(f'nmap -sV -oN {folder_path}/nmap/open_ports {ip}')
     nmap_result = subprocess.run(inital_scan_command, capture_output=True, text=True)
 
     if nmap_result.returncode == 0:
         open_ports = re.findall(r'(\d+)/tcp\s+open', nmap_result.stdout)
-
-        if verbose:
-            print(f'[*] Found open ports {", ".join(open_ports)}')
+        
+        announce("a", f'Found open ports {", ".join(open_ports)}')
     else:
-        if verbose:
-            print("[!] Initial nmap scan failed")
+        announce("e", "Initial nmap scan failed")
         exit(0)
 
     # Gör en djupare scan på alla öppna portar
     for port in open_ports:  
-
-        if verbose:
-            print(f"[i] Now scanning port {port}...")
+        
+        announce("i", f'Now scanning port {port}...')
 
         port_command = shlex.split(f'nmap -p{port} -sC -sV -oN {folder_path}/nmap/port_{port} {ip}')
         port_scan = subprocess.run(port_command, capture_output=True, text=True)
@@ -63,19 +73,16 @@ def initial_enumeration():
         
             f.write(f'```{scan_result}```\n')
         else:
-            if verbose:
-                print(f"[!] Failed to enumerate port {port}")
+            announce("e", f'Failed to enumerate port {port}')
             exit(1)
 
     f.write(f'## Enum\n\n## Exploit\n\n## Submit user flag\n\n## Privesc\n\n## Submit root flag\n\n## Länkar')
-
-    if verbose:
-        print("[*] Scan completed successfully")
+    
+    announce("a", "Scan completed successfully")
 
 
 def enumerate_http():
-    if verbose:
-        print("[i] Starting web enumeration...")
+    announce("i", "Starting web enumeration...")
         
     ports_file = open(f"{folder_path}/nmap/open_ports")
     ports = ports_file.read()
@@ -86,13 +93,15 @@ def enumerate_http():
     for match in matches:
         port, service = match
 
-        if service == "http":
-
-            if verbose:
-                print(f"[i] Enumerating port {port}")
+        if service == "http" or service == 'https':
+            
+            announce("i", f'Port {port} is running {service}')
 
             # Gobuster
-            gobuster_command = shlex.split(f"gobuster dir -u http://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt")
+            if service == 'http':
+                gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt")
+            else:
+                gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt -k")
             gobuster_scan = subprocess.run(gobuster_command, capture_output=True, text=True)
 
             # Nikto
@@ -109,26 +118,20 @@ def enumerate_http():
 
 if __name__ == '__main__':
     args = parser.parse_args()
+    author = args.author
     path = args.path
     name = args.name
     ip = args.ip
-    web = args.web
     verbose = args.verbose
 
     folder_path = f"{path}/{name}"
 
-    if verbose: 
-        print("[i] Making initial README template...")
+    announce("i", "Making initial README template...")
 
     initial_enumeration()
     
-    if verbose:
-        print(f"[*] README file completed at {folder_path}/README.md")
+    announce("a", f'README file completed at {folder_path}/README.md')
 
-    if web:
-        enumerate_http()
+    enumerate_http()
     
-    print("[*] Everything is done!")
-
-
-
+    announce("a", "Everything is done!")
