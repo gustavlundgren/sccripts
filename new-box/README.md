@@ -6,8 +6,16 @@ This is a simple project that makes a template for notes when taking on a pentes
 
 ### Installing
 
+Clone the script
+
 ```bash
 git clone https://github.com/gustavlundgren/scripts/blob/a51b20590300302df8f479dc0df419508152f7fe/new-box/new-box.py
+```
+
+Install requirements
+
+```bash
+pip install tqdm
 ```
 
 ### Usage

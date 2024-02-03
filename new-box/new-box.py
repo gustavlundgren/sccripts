@@ -3,9 +3,12 @@
 import argparse
 import subprocess
 import os
-from datetime import datetime 
 import re
 import shlex
+from datetime import datetime 
+from progress.bar import Bar
+from tqdm import tqdm
+
 
 parser = argparse.ArgumentParser(description="Enum script for a new box")
 parser.add_argument("--author", help="Your name. (Firstname Lastname)")
@@ -14,7 +17,7 @@ parser.add_argument("--name", help="The name of the box. (Will also be the name 
 parser.add_argument("-i", "--ip", help="The ip adress of the box")
 parser.add_argument("-V", "--verbose", action=argparse.BooleanOptionalAction, default=False, help="Add this if you want the program to write out it's progress to the console")
 
-def announce(type, msg):
+def announce(type, msg, bar =None):
     announcement = ""
     match type:
         case "i":
@@ -25,8 +28,12 @@ def announce(type, msg):
         case "a":
             if verbose:
                 announcement = f"[*] {msg}" 
+
     if announcement != "":
-        print(announcement)
+        if bar is not None:
+            bar.write(announcement)
+        else:
+            print(announcement)
 
 def initial_enumeration():
     # Skapa Alla Mappar
@@ -57,24 +64,27 @@ def initial_enumeration():
         exit(0)
 
     # Gör en djupare scan på alla öppna portar
-    for port in open_ports:  
-        
-        announce("i", f'Now scanning port {port}...')
+    with tqdm(total=len(open_ports), desc=f"Scanning ports...", unit="port") as pbar:
+        for port in open_ports:  
+            
+            announce("i", f'Now scanning port {port}...', bar=pbar)
 
-        port_command = shlex.split(f'nmap -p{port} -sC -sV -oN {folder_path}/nmap/port_{port} {ip}')
-        port_scan = subprocess.run(port_command, capture_output=True, text=True)
+            port_command = shlex.split(f'nmap -p{port} -sC -sV -oN {folder_path}/nmap/port_{port} {ip}')
+            port_scan = subprocess.run(port_command, capture_output=True, text=True)
 
-        if port_scan.returncode == 0:
-            pattern = re.compile(r"Host is up.*?\n(.*?)\nService detection performed", re.DOTALL)
-            matches = re.search(pattern, port_scan.stdout)
+            if port_scan.returncode == 0:
+                pattern = re.compile(r"Host is up.*?\n(.*?)\nService detection performed", re.DOTALL)
+                matches = re.search(pattern, port_scan.stdout)
 
-            if matches:
-                scan_result = matches.group(1)
-        
-            f.write(f'```{scan_result}```\n')
-        else:
-            announce("e", f'Failed to enumerate port {port}')
-            exit(1)
+                if matches:
+                    scan_result = matches.group(1)
+            
+                f.write(f'```{scan_result}```\n')
+            else:
+                announce("e", f'Failed to enumerate port {port}', bar=pbar)
+                exit(1)
+
+            pbar.update(1)
 
     f.write(f'## Enum\n\n## Exploit\n\n## Submit user flag\n\n## Privesc\n\n## Submit root flag\n\n## Länkar')
     
@@ -89,32 +99,38 @@ def enumerate_http():
 
     pattern = re.compile(r"(\d+)/tcp\s+\w+\s+(\w+)", re.MULTILINE)
     matches = re.findall(pattern, ports)
+    
+    with tqdm(total=len(matches)*2, desc=f"Enumerationg web service...", unit="port") as pbar:
+        for match in matches:
+            port, service = match
 
-    for match in matches:
-        port, service = match
+            if service == "http" or service == 'https':
+                
+                announce("i", f'Port {port} is running {service}', bar=pbar)
 
-        if service == "http" or service == 'https':
-            
-            announce("i", f'Port {port} is running {service}')
+                # Gobuster
+                if service == 'http':
+                    gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt")
+                else:
+                    gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt -k")
+                gobuster_scan = subprocess.run(gobuster_command, capture_output=True, text=True)
+                
+                pbar.update(1)
 
-            # Gobuster
-            if service == 'http':
-                gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt")
-            else:
-                gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt -k")
-            gobuster_scan = subprocess.run(gobuster_command, capture_output=True, text=True)
 
-            # Nikto
-            nikto_command = shlex.split(f'nikto --host {ip} -p {port}')
-            nikto_scan = subprocess.run(nikto_command, capture_output=True, text=True)
+                # Nikto
+                nikto_command = shlex.split(f'nikto --host {ip} -p {port}')
+                nikto_scan = subprocess.run(nikto_command, capture_output=True, text=True)
+                
+                pbar.update(1)
 
-            # Write to files
-            gobuster_file = open(f"{folder_path}/enum/gobuster.log", "a")
-            gobuster_file.write(gobuster_scan.stdout)
+                # Write to files
+                gobuster_file = open(f"{folder_path}/enum/gobuster.log", "a")
+                gobuster_file.write(gobuster_scan.stdout)
 
-            nikto_file = open(f"{folder_path}/enum/nikto.log", "a")
-            nikto_file.write(nikto_scan.stdout)
-
+                nikto_file = open(f"{folder_path}/enum/nikto.log", "a")
+                nikto_file.write(nikto_scan.stdout)
+        
 
 if __name__ == '__main__':
     args = parser.parse_args()
