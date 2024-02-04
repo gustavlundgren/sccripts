@@ -109,14 +109,15 @@ def enumerate_http():
                 announce("i", f'Port {port} is running {service}', bar=pbar)
 
                 # Gobuster
-                if service == 'http':
-                    gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt")
-                else:
-                    gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt -k")
-                gobuster_scan = subprocess.run(gobuster_command, capture_output=True, text=True)
+                # if service == 'http':
+                #     gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt")
+                # else:
+                #     gobuster_command = shlex.split(f"gobuster dir -u {service}://{ip}:{port}/ -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt -k")
+                # gobuster_scan = subprocess.run(gobuster_command, capture_output=True, text=True)
                 
-                pbar.update(1)
-
+                # Ffuf
+                ffuf_command = shlex.split(f'nikto -u {service}://{ip}:{port}/FUZZ -r -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-medium.txt')
+                ffuf_scan = subprocess.run(ffuf_command, capture_output=True, text=True)
 
                 # Nikto
                 nikto_command = shlex.split(f'nikto --host {ip} -p {port}')
@@ -125,8 +126,8 @@ def enumerate_http():
                 pbar.update(1)
 
                 # Write to files
-                gobuster_file = open(f"{folder_path}/enum/gobuster.log", "a")
-                gobuster_file.write(gobuster_scan.stdout)
+                gobuster_file = open(f"{folder_path}/enum/ffuf.log", "a")
+                gobuster_file.write(ffuf_scan.stdout)
 
                 nikto_file = open(f"{folder_path}/enum/nikto.log", "a")
                 nikto_file.write(nikto_scan.stdout)
