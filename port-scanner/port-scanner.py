@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import re
 from scapy.all import IP, TCP, sr1 
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -21,8 +22,7 @@ def scan_port(ip, port):
         response = sr1(IP(dst=ip)/TCP(sport=randint(1024,65535), dport=port, flags="S"), timeout=1, verbose=0)
         
         if response is not None and response[TCP].flags == "SA":
-            print(response.show())
-            return port
+            return response
         
         return None
     
@@ -43,7 +43,10 @@ def scan_all_ports(ip, threads):
                 result = future.result()
 
                 if result is not None:
-                    pbar.write(f"[*] Port {port} is up")
+
+                    service = re.search(r'(?<=:)(.*?)(?=>)', result.summary()).group(1)
+
+                    pbar.write(f"[*] Port {port}/{service}")
                     open_ports.append(port)
                 
                 pbar.update(1)
