@@ -8,7 +8,7 @@ import sys
 
 
 # Import my own modules
-sys.path.append("../announcer")
+sys.path.append("home/kali/scriptss/announcer")
 from Announcer import Announcer
 
 # Get full host adress, get wordlist, get whitelist and get verbose mode 
