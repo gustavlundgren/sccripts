@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import sys
+import os
 import logging
 import argparse
 from ipaddress import ip_network
@@ -10,7 +11,7 @@ from threading import Lock
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Import my own modules
-sys.path.append("/home/kali/scripts/announcer")
+sys.path.append(f'/home/{os.getlogin()}/scripts/announcer')
 from Announcer import Announcer
 
 parser = argparse.ArgumentParser(description="Ping a host")

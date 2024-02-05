@@ -5,10 +5,10 @@ import requests
 from tqdm import tqdm 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import sys
-
+import os
 
 # Import my own modules
-sys.path.append("home/kali/scriptss/announcer")
+sys.path.append(f'/home/{os.getlogin()}/scripts/announcer')
 from Announcer import Announcer
 
 # Get full host adress, get wordlist, get whitelist and get verbose mode 
